@@ -95,6 +95,9 @@ export default class Mob extends Phaser.Physics.Arcade.Sprite {
             this.scene.m_expUps.add(expUp);
         }
       
+        // 몹이 죽으면 TopBar의 mobs killed에 1을 더해줍니다.
+        this.scene.m_topBar.gainMobsKilled();
+
         // player 쪽으로 움직이게 만들었던 event를 제거합니다.
         this.scene.time.removeEvent(this.m_events);
       

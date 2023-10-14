@@ -3,10 +3,12 @@ import Player from "../characters/Player";
 import Mob from "../characters/Mob";
 import Config from "../Config";
 import { setBackground } from "../utils/backgroundManager";
-import { addMobEvent } from "../utils/mobManager";
-import { addAttackEvent } from "../utils/attackManager";
+import { addMobEvent, removeOldestMobEvent } from "../utils/mobManager";
 import TopBar from '../ui/TopBar';
 import ExpBar from '../ui/ExpBar';
+import { pause } from "../utils/pauseManager";
+import { setAttackScale, setAttackDamage, addAttackEvent } from "../utils/attackManager"
+import { createTime } from "../utils/time";
 
 export default class PlayingScene extends Phaser.Scene {
     constructor() {
@@ -46,23 +48,6 @@ export default class PlayingScene extends Phaser.Scene {
         // camera가 player를 따라오도록 하여 뱀파이어 서바이벌처럼 player가 가운데 고정되도록 합니다.
         this.cameras.main.startFollow(this.m_player);
 
-
-        // m_mobs는 physics group으로, 속한 모든 오브젝트에 동일한 물리법칙을 적옹할 수 있습니다.
-        // m_mobEvents는 mob event의 timer를 담을 배열로, mob event를 추가 및 제거할 때 사용할 것입니다.
-        // addMobEvent는 m_mobEvents에 mob event의 timer를 추가해줍니다.
-        this.m_mobs = this.physics.add.group();
-        this.m_mobEvents = [];
-        // scene, repeatGap, mobTexture, mobAnim, mobHp, mobDropRate
-        addMobEvent(this, 1000, "mob1", "mob1_anim", 10, 0.9);
-
-        // mobs
-        this.m_mobs = this.physics.add.group();
-        // 맨 처음에 등장하는 몹을 수동으로 추가해줍니다.
-        // 추가하지 않으면 closest mob을 찾는 부분에서 에러가 발생합니다.
-        this.m_mobs.add(new Mob(this, 0, 0, "mob1", "mob1_anim", 10));
-        this.m_mobEvents = [];
-        addMobEvent(this, 1000, "mob1", "mob1_anim", 10, 0.5);
-
         // Attacks
         // 정적인 공격과 동적인 공격의 동작 방식이 다르므로 따로 group을 만들어줍니다.
         // attack event를 저장하는 객체도 멤버 변수로 만들어줍니다.
@@ -70,8 +55,22 @@ export default class PlayingScene extends Phaser.Scene {
         this.m_weaponDynamic = this.add.group();
         this.m_weaponStatic = this.add.group();
         this.m_attackEvents = {};
-        // PlayingScene이 실행되면 바로 beam attack event를 추가해줍니다.
+
+        // 맨 처음 추가될 공격은 create 메소드 내에서 추가해줍니다.
+        addAttackEvent(this, "claw", 10, 2, 1500);
         addAttackEvent(this, "beam", 10, 1, 1000);
+
+
+        // Mobs
+        // m_mobs는 physics group으로, 속한 모든 오브젝트에 동일한 물리법칙을 적옹할 수 있습니다.
+        // m_mobEvents는 mob event의 timer를 담을 배열로, mob event를 추가 및 제거할 때 사용할 것입니다.
+        // addMobEvent는 m_mobEvents에 mob event의 timer를 추가해줍니다.
+        this.m_mobs = this.physics.add.group();
+        // 맨 처음에 등장하는 몹을 수동으로 추가해줍니다.
+        // 추가하지 않으면 closest mob을 찾는 부분에서 에러가 발생합니다.
+        this.m_mobs.add(new Mob(this, 0, 0, "mob1", "mob1_anim", 10));
+        this.m_mobEvents = [];
+        addMobEvent(this, 500, "mob1", "mob1_anim", 10, 0.8);
 
         // Collisions
         // Player와 mob이 부딪혔을 경우 player에 데미지 10을 줍니다.
@@ -121,6 +120,19 @@ export default class PlayingScene extends Phaser.Scene {
 	  // 맨 처음 maxExp는 50으로 설정해줍니다.
 	  this.m_topBar = new TopBar(this);
 	  this.m_expBar = new ExpBar(this, 50);
+
+      // event handler
+      // ESC 키를 누르면 "pause" 유형으로 일시정지 시킵니다.
+      this.input.keyboard.on(
+        "keydown-ESC",
+        () => { pause(this, "pause"); },
+        this
+      );
+
+      // time
+      // 플레이 시간을 생성해줍니다.
+      createTime(this);
+
     }
 
     update() {
@@ -146,17 +158,17 @@ export default class PlayingScene extends Phaser.Scene {
 
     // player와 expUp이 접촉했을 때 실행되는 메소드입니다.
     pickExpUp(player, expUp) {
-        // expUp을 비활성화하고 화면에 보이지 않게 합니다.
         expUp.disableBody(true, true);
-        // expUp을 제거합니다.
         expUp.destroy();
-    
-        // 소리를 재생합니다.
+      
         this.m_expUpSound.play();
-        this.m_expUpSound.setVolume(0.3);
-        // 일단 콘솔로 상승한 경험치를 출력합니다.
-        console.log(`경험치 ${expUp.m_exp} 상승!`);
-    }
+        // expUp item을 먹으면 expBar의 경험치를 아이템의 m_exp 값만큼 증가시켜줍니다.
+        this.m_expBar.increase(expUp.m_exp);
+          // 만약 현재 경험치가 maxExp 이상이면 레벨을 증가시켜줍니다.
+        if (this.m_expBar.m_currentExp >= this.m_expBar.m_maxExp) {
+          this.m_topBar.gainLevel();
+        }
+      }
 
     // player가 움직이도록 해주는 메소드입니다.
     movePlayerManager() {
@@ -193,5 +205,69 @@ export default class PlayingScene extends Phaser.Scene {
 
         // vector를 player 클래스의 메소드의 파라미터로 넘겨줍니다.
         this.m_player.move(vector);
+
+        // static 공격들은 player가 이동하면 그대로 따라오도록 해줍니다.
+        this.m_weaponStatic.children.each(weapon => { weapon.move(vector); }, this);
+    }
+
+    pickExpUp(player, expUp) {
+        expUp.disableBody(true, true);
+        expUp.destroy();
+    
+        this.m_expUpSound.play();
+        this.m_expUpSound.setVolume(0.3);
+        this.m_expBar.increase(expUp.m_exp);
+        if (this.m_expBar.m_currentExp >= this.m_expBar.m_maxExp) {
+          // maxExp를 초과하면 레벨업을 해주던 기존의 코드를 지우고
+          // afterLevelUp 메소드를 만들어 거기에 옮겨줍니다.
+          // 추후 레벨에 따른 몹, 무기 추가를 afterLevelUp에서 실행해 줄 것입니다.
+          pause(this, "levelup");
+        }
+      }
+    
+      afterLevelUp() {
+        this.m_topBar.gainLevel();
+      
+        // 레벨이 2, 3, 4, ..가 되면 등장하는 몹을 변경해줍니다.
+        // 이전 몹 이벤트를 지우지 않으면 난이도가 너무 어려워지기 때문에 이전 몹 이벤트를 지워줍니다.
+        // 레벨이 높아질 수록 강하고 아이텝 드랍율이 낮은 몹을 등장시킵니다.
+        // repeatGap은 동일하게 설정했지만 레벨이 올라갈수록 더 짧아지도록 조절하셔도 됩니다.
+        switch (this.m_topBar.m_level) {
+            case 2:
+                removeOldestMobEvent(this);
+                addMobEvent(this, 1000, "mob1", "mob1_anim", 10, 0.8);
+                addMobEvent(this, 1000, "mob2", "mob2_anim", 20, 0.5);
+                // claw 공격 크기 확대
+                setAttackScale(this, "claw", 4);
+                break;
+            case 3:
+                removeOldestMobEvent(this);
+                addMobEvent(this, 1000, "mob1", "mob1_anim", 10, 0.8);
+                addMobEvent(this, 1000, "mob2", "mob2_anim", 20, 0.5);
+                addMobEvent(this, 1000, "mob3", "mob3_anim", 30, 0.7);
+                // catnip 공격 추가
+                addAttackEvent(this, "catnip", 10, 2);
+                break;
+            case 4:
+                removeOldestMobEvent(this);
+                addMobEvent(this, 1000, "mob1", "mob1_anim", 10, 0.8);
+                addMobEvent(this, 1000, "mob2", "mob2_anim", 20, 0.5);
+                addMobEvent(this, 1000, "mob3", "mob3_anim", 30, 0.7);
+                addMobEvent(this, 1000, "mob4", "mob4_anim", 40, 0.9);
+                // catnip 공격 크기 확대
+                setAttackScale(this, "catnip", 3);
+                break;
+            case 5:
+                setAttackScale(this, "beam", 1.5);
+                setAttackDamage(this, "beam", 40);
+                break;
+            case 6:
+                setAttackScale(this, "beam", 2);
+                setAttackDamage(this, "beam", 70);
+                break;
+            case 7:
+                setAttackScale(this, "claw", 7);
+                break;
+        }
     }
 }
