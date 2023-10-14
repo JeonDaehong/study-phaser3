@@ -26,6 +26,15 @@ export function addMobEvent(scene, repeatGap, mobTexture, mobAnim, mobHp, mobDro
 
     scene.m_mobEvents.push(timer);
 }
+/**
+ * scene의 (x, y) 위치에 mobTexture 이미지, mobAnim 애니메이션, mobHp의 HP를 가진
+ * Mob object 하나를 추가합니다.
+ * 위치 (x, y)는 getRandomPosition 함수를 통해 정해집니다.
+ */
+export function addMob(scene, mobTexture, mobAnim, mobHp) {
+    let [x, y] = getRandomPosition(scene.m_player.x, scene.m_player.y);
+    scene.m_mobs.add(new Mob(scene, x, y, mobTexture, mobAnim, mobHp, 0));
+}
 
 // 가장 오래된 mob event를 지우는 함수입니다.
 export function removeOldestMobEvent(scene) {

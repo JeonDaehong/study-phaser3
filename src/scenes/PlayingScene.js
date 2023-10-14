@@ -3,12 +3,13 @@ import Player from "../characters/Player";
 import Mob from "../characters/Mob";
 import Config from "../Config";
 import { setBackground } from "../utils/backgroundManager";
-import { addMobEvent, removeOldestMobEvent } from "../utils/mobManager";
+import { addMob, addMobEvent, removeOldestMobEvent } from "../utils/mobManager";
 import TopBar from '../ui/TopBar';
 import ExpBar from '../ui/ExpBar';
 import { pause } from "../utils/pauseManager";
 import { setAttackScale, setAttackDamage, addAttackEvent } from "../utils/attackManager"
 import { createTime } from "../utils/time";
+import Button from "../ui/Button";
 
 export default class PlayingScene extends Phaser.Scene {
     constructor() {
@@ -254,6 +255,8 @@ export default class PlayingScene extends Phaser.Scene {
                 addMobEvent(this, 1000, "mob2", "mob2_anim", 20, 0.5);
                 addMobEvent(this, 1000, "mob3", "mob3_anim", 30, 0.7);
                 addMobEvent(this, 1000, "mob4", "mob4_anim", 40, 0.9);
+                // 배경 수정
+                setBackground(this, "background3");
                 // catnip 공격 크기 확대
                 setAttackScale(this, "catnip", 3);
                 break;
@@ -267,6 +270,8 @@ export default class PlayingScene extends Phaser.Scene {
                 break;
             case 7:
                 setAttackScale(this, "claw", 7);
+                addMob(this, "lion", "lion_anim", 300, 0);
+                setBackground(this, "background2");
                 break;
         }
     }

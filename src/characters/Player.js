@@ -21,7 +21,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         // 해당 오브젝트가 물리적으로 얼만큼의 면적을 차지할 지 설정하는 함수입니다.
         // 디폴트로 이미지 사이즈로 설정되는데, 그러면 추후 몹을 추가했을 때 너무 잘 부딪히는 느낌이 드므로 원본 이미지보다 약간 작게 설정해주었습니다.
-        this.setBodySize(28, 32);
+        this.setBodySize(24, 28);
 
         // 걷기 애니메이션 재생 여부를 위한 멤버 변수입니다.
         this.m_moving = false;
@@ -67,11 +67,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         // mob과 접촉했을 때 damage만큼 HP를 감소시켜줍니다.
         this.m_hpBar.decrease(damage);
-
-        // HP가 0이 되면 게임오버! (다음 챕터에서 수정할 것입니다.)
-        if (this.m_hpBar.m_currentHp <= 0) {
-            console.log('GAME OVER');
-        }
 
         // HP가 0 이하가 되면 loseGame 함수를 실행해줍니다.
         if (this.m_hpBar.m_currentHp <= 0) {

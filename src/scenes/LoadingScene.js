@@ -112,7 +112,7 @@ export default class LoadingScene extends Phaser.Scene {
 
   create() {
     this.add.text(20, 20, "Loading game...");
-    this.scene.start("playGame");
+    this.scene.start("mainScene");
 
     // MOBS
     this.anims.create({
