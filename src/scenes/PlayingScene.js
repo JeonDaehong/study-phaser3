@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import Player from "../characters/Player";
+import Config from "../Config";
 import { setBackground } from "../utils/backgroundManager";
+import { addMobEvent } from "../utils/mobManager";
 
 export default class PlayingScene extends Phaser.Scene {
     constructor() {
@@ -34,10 +36,30 @@ export default class PlayingScene extends Phaser.Scene {
 
         // 키보드 키를 m_cursorKeys라는 멤버 변수로 추가해줍니다.
 		this.m_cursorKeys = this.input.keyboard.createCursorKeys();
+
+        // camera가 player를 따라오도록 하여 뱀파이어 서바이벌처럼 player가 가운데 고정되도록 합니다.
+        this.cameras.main.startFollow(this.m_player);
+
+
+        // m_mobs는 physics group으로, 속한 모든 오브젝트에 동일한 물리법칙을 적옹할 수 있습니다.
+        // m_mobEvents는 mob event의 timer를 담을 배열로, mob event를 추가 및 제거할 때 사용할 것입니다.
+        // addMobEvent는 m_mobEvents에 mob event의 timer를 추가해줍니다.
+        this.m_mobs = this.physics.add.group();
+        this.m_mobEvents = [];
+        // scene, repeatGap, mobTexture, mobAnim, mobHp, mobDropRate
+        addMobEvent(this, 1000, "mob1", "mob1_anim", 10, 0.9);
     }
 
     update() {
         this.movePlayerManager();
+
+        // camera가 가는 곳으로 background가 따라 움직이도록 해줍니다.
+        this.m_background.setX(this.m_player.x - Config.width / 2);
+        this.m_background.setY(this.m_player.y - Config.height / 2);
+
+        // tilePosition을 player가 움직이는 만큼 이동시켜 마치 무한 배경인 것처럼 나타내 줍니다.
+        this.m_background.tilePositionX = this.m_player.x - Config.width / 2;
+        this.m_background.tilePositionY = this.m_player.y - Config.height / 2;
     }
 
     // player가 움직이도록 해주는 메소드입니다.
