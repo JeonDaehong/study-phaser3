@@ -1,8 +1,12 @@
 import Phaser from "phaser";
 import Player from "../characters/Player";
+import Mob from "../characters/Mob";
 import Config from "../Config";
 import { setBackground } from "../utils/backgroundManager";
 import { addMobEvent } from "../utils/mobManager";
+import { addAttackEvent } from "../utils/attackManager";
+import TopBar from '../ui/TopBar';
+import ExpBar from '../ui/ExpBar';
 
 export default class PlayingScene extends Phaser.Scene {
     constructor() {
@@ -26,6 +30,8 @@ export default class PlayingScene extends Phaser.Scene {
         this.m_gameClearSound = this.sound.add("audio_gameClear");
         this.m_pauseInSound = this.sound.add("audio_pauseIn");
         this.m_pauseOutSound = this.sound.add("audio_pauseOut");
+        // exp up item들을 담을 physics group을 추가해줍니다.
+        this.m_expUps = this.physics.add.group();
 
 
         // player를 m_player라는 멤버 변수로 추가합니다.
@@ -48,6 +54,73 @@ export default class PlayingScene extends Phaser.Scene {
         this.m_mobEvents = [];
         // scene, repeatGap, mobTexture, mobAnim, mobHp, mobDropRate
         addMobEvent(this, 1000, "mob1", "mob1_anim", 10, 0.9);
+
+        // mobs
+        this.m_mobs = this.physics.add.group();
+        // 맨 처음에 등장하는 몹을 수동으로 추가해줍니다.
+        // 추가하지 않으면 closest mob을 찾는 부분에서 에러가 발생합니다.
+        this.m_mobs.add(new Mob(this, 0, 0, "mob1", "mob1_anim", 10));
+        this.m_mobEvents = [];
+        addMobEvent(this, 1000, "mob1", "mob1_anim", 10, 0.5);
+
+        // Attacks
+        // 정적인 공격과 동적인 공격의 동작 방식이 다르므로 따로 group을 만들어줍니다.
+        // attack event를 저장하는 객체도 멤버 변수로 만들어줍니다.
+        // 이는 공격 강화등에 활용될 것입니다.
+        this.m_weaponDynamic = this.add.group();
+        this.m_weaponStatic = this.add.group();
+        this.m_attackEvents = {};
+        // PlayingScene이 실행되면 바로 beam attack event를 추가해줍니다.
+        addAttackEvent(this, "beam", 10, 1, 1000);
+
+        // Collisions
+        // Player와 mob이 부딪혔을 경우 player에 데미지 10을 줍니다.
+        // (Player.js에서 hitByMob 함수 확인)
+        this.physics.add.overlap(
+            this.m_player,
+            this.m_mobs,
+            () => this.m_player.hitByMob(10),
+            null,
+            this
+        );
+        
+        // mob이 dynamic 공격에 부딪혓을 경우 mob에 해당 공격의 데미지만큼 데미지를 줍니다.
+        // (Mob.js에서 hitByDynamic 함수 확인)
+        this.physics.add.overlap(
+            this.m_weaponDynamic,
+            this.m_mobs,
+            (weapon, mob) => {
+            mob.hitByDynamic(weapon, weapon.m_damage);
+            },
+            null,
+            this
+        );
+        
+        // mob이 static 공격에 부딪혓을 경우 mob에 해당 공격의 데미지만큼 데미지를 줍니다.
+        // (Mob.js에서 hitByStatic 함수 확인)
+        this.physics.add.overlap(
+            this.m_weaponStatic,
+            this.m_mobs,
+            (weapon, mob) => {
+            mob.hitByStatic(weapon.m_damage);
+            },
+            null,
+            this
+        );
+
+        // player와 expUp이 접촉했을 때 pickExpUp 메소드가 동작하도록 합니다.
+        this.physics.add.overlap(
+            this.m_player,
+            this.m_expUps,
+            this.pickExpUp,
+            null,
+            this
+        );
+
+      // topBar, expBar를 PlayingScene에 추가해줍니다. 
+	  // 맨 처음 maxExp는 50으로 설정해줍니다.
+	  this.m_topBar = new TopBar(this);
+	  this.m_expBar = new ExpBar(this, 50);
     }
 
     update() {
@@ -60,6 +133,29 @@ export default class PlayingScene extends Phaser.Scene {
         // tilePosition을 player가 움직이는 만큼 이동시켜 마치 무한 배경인 것처럼 나타내 줍니다.
         this.m_background.tilePositionX = this.m_player.x - Config.width / 2;
         this.m_background.tilePositionY = this.m_player.y - Config.height / 2;
+
+        // player로부터 가장 가까운 mob을 구합니다.
+        // 가장 가까운 mob은 mob, player의 움직임에 따라 계속 바뀌므로 update 내에서 구해야 합니다.
+        // getChildren: group에 속한 모든 객체들의 배열을 리턴하는 메소드입니다.
+        const closest = this.physics.closest(
+            this.m_player,
+            this.m_mobs.getChildren()
+        );
+        this.m_closest = closest;
+    }
+
+    // player와 expUp이 접촉했을 때 실행되는 메소드입니다.
+    pickExpUp(player, expUp) {
+        // expUp을 비활성화하고 화면에 보이지 않게 합니다.
+        expUp.disableBody(true, true);
+        // expUp을 제거합니다.
+        expUp.destroy();
+    
+        // 소리를 재생합니다.
+        this.m_expUpSound.play();
+        this.m_expUpSound.setVolume(0.3);
+        // 일단 콘솔로 상승한 경험치를 출력합니다.
+        console.log(`경험치 ${expUp.m_exp} 상승!`);
     }
 
     // player가 움직이도록 해주는 메소드입니다.
