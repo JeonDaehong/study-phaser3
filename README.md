@@ -1,5 +1,10 @@
 # Phaser 3 Webpack Project Template
 
+|---------|-------------|
+We have summarized what we learned in the Inflearn(https://www.inflearn.com/) Phaser lecture. This content was used solely for my own study, and no profit is being made.
+Play Link : https://jeondaehong.github.io/study-phaser3-build/
+|---------|-------------|
+
 A Phaser 3 project template with ES6 support via [Babel 7](https://babeljs.io/) and [Webpack 4](https://webpack.js.org/) that includes hot-reloading for development and production-ready builds.
 
 This has been updated for Phaser 3.50.0 version and above.
